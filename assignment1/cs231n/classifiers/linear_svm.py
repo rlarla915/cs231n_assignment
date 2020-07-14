@@ -35,11 +35,14 @@ def svm_loss_naive(W, X, y, reg):
       margin = scores[j] - correct_class_score + 1 # note delta = 1
       if margin > 0:
         loss += margin
+        dW[:, y[i]] -= X[i] # Q) why "np.reshape(X[i], (-1,1))" can't be an answer? A) np.reshape() be a two dimensional matrix. So compute error causes
+        dW[:, j] += X[i] # one line can be broadcasting without match
 
   # Right now the loss is a sum over all training examples, but we want it
   # to be an average instead so we divide by num_train.
   loss /= num_train
-
+  dW /= num_train
+  dW += 2 * reg * W
   # Add regularization to the loss.
   loss += reg * np.sum(W * W)
 
@@ -70,7 +73,16 @@ def svm_loss_vectorized(W, X, y, reg):
   # Implement a vectorized version of the structured SVM loss, storing the    #
   # result in loss.                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+  all_case = X.dot(W)
+  correct_case = np.reshape(all_case[np.arange(num_train), y], (num_train, 1))
+  tmp_svm_loss = np.maximum(0, all_case - correct_case + 1)
+  mask = tmp_svm_loss.copy()
+  mask[mask>0] = 1
+  tmp_svm_loss[np.arange(num_train), y] = 0
+  loss = tmp_svm_loss.sum()
+  loss /= num_train
+  loss += reg * np.sum(W * W)
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -85,7 +97,11 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  pass
+  num_minus = np.sum(mask, axis = 1)
+  mask[np.arange(num_train), y] -= num_minus # classification of correct case is added and distracted so it does noting
+  dW = (X.T).dot(mask) / num_train
+  
+  dW += 2 * reg * W
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
